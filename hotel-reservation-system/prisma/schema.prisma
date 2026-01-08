@@ -8,39 +8,200 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  CLIENT
+  ADMIN
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ServicePricingModel {
+  PER_STAY
+  PER_NIGHT
+}
+
+enum PaymentProvider {
+  CASH
+  CARD
+  TRANSFER
+}
+
 model User {
-  id         Int           @id @default(autoincrement())
-  email      String        @unique
-  password   String
-  name       String?
-  reservations Reservation[]
-  createdAt  DateTime      @default(now())
+  id            String        @id @default(uuid()) @db.Uuid
+  email         String        @unique
+  passwordHash  String
+  name          String?
+  role          UserRole      @default(CLIENT)
+  reservations  Reservation[]
+  reviews       Review[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 model Hotel {
-  id      Int    @id @default(autoincrement())
-  name    String
-  address String
-  rooms   Room[]
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  address     String
+  city        String?
+  country     String?
+  description String?
+
+  roomTypes   RoomType[]
+  rooms       Room[]
+  services    Service[]
+  reviews     Review[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([name])
+}
+
+model RoomType {
+  id          String   @id @default(uuid()) @db.Uuid
+  hotel       Hotel    @relation(fields: [hotelId], references: [id])
+  hotelId     String   @db.Uuid
+  name        String
+  description String?
+  capacity    Int
+  basePrice   Decimal  @db.Decimal(10, 2)
+  rooms       Room[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([hotelId, name])
+  @@index([hotelId])
 }
 
 model Room {
-  id           Int           @id @default(autoincrement())
-  number       String
-  type         String
-  price        Float
-  hotel        Hotel         @relation(fields: [hotelId], references: [id])
-  hotelId      Int
-  reservations Reservation[]
+  id            String        @id @default(uuid()) @db.Uuid
+  hotel         Hotel         @relation(fields: [hotelId], references: [id])
+  hotelId       String        @db.Uuid
+  roomType      RoomType      @relation(fields: [roomTypeId], references: [id])
+  roomTypeId    String        @db.Uuid
+  number        String
+  floor         Int?
+  isActive      Boolean       @default(true)
+  reservations  Reservation[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([hotelId, number])
+  @@index([hotelId])
+  @@index([roomTypeId])
 }
 
 model Reservation {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  room      Room     @relation(fields: [roomId], references: [id])
-  roomId    Int
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime @default(now())
+  id          String             @id @default(uuid()) @db.Uuid
+  user        User               @relation(fields: [userId], references: [id])
+  userId      String             @db.Uuid
+  room        Room               @relation(fields: [roomId], references: [id])
+  roomId      String             @db.Uuid
+
+  startDate   DateTime           @db.Date
+  endDate     DateTime           @db.Date
+  status      ReservationStatus  @default(PENDING)
+
+  currency    String             @default("PLN") @db.VarChar(3)
+  totalAmount Decimal            @db.Decimal(10, 2)
+
+  payments    Payment[]
+  services    ReservationService[]
+  review      Review?
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([status])
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservationId String        @db.Uuid
+
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("PLN") @db.VarChar(3)
+  status        PaymentStatus @default(PENDING)
+  provider      PaymentProvider
+  externalRef   String?       @db.VarChar(128)
+  paidAt        DateTime?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([reservationId])
+  @@index([status])
+  @@unique([provider, externalRef])
+}
+
+model Service {
+  id           String               @id @default(uuid()) @db.Uuid
+  hotel        Hotel                @relation(fields: [hotelId], references: [id])
+  hotelId      String               @db.Uuid
+
+  name         String
+  description  String?
+  pricingModel ServicePricingModel
+  price        Decimal              @db.Decimal(10, 2)
+  isActive     Boolean              @default(true)
+
+  reservations ReservationService[]
+
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([hotelId, name])
+  @@index([hotelId])
+}
+
+model ReservationService {
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservationId String      @db.Uuid
+  service       Service     @relation(fields: [serviceId], references: [id])
+  serviceId     String      @db.Uuid
+
+  quantity      Int         @default(1)
+  unitPrice     Decimal     @db.Decimal(10, 2)
+  totalPrice    Decimal     @db.Decimal(10, 2)
+
+  createdAt     DateTime    @default(now())
+
+  @@id([reservationId, serviceId])
+  @@index([serviceId])
+}
+
+model Review {
+  id            String      @id @default(uuid()) @db.Uuid
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservationId String      @unique @db.Uuid
+
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String      @db.Uuid
+  hotel         Hotel       @relation(fields: [hotelId], references: [id])
+  hotelId       String      @db.Uuid
+
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([hotelId])
+  @@index([userId])
 }
