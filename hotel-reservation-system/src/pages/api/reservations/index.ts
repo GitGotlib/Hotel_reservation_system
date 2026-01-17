@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 
 import prisma from '../../../utils/prismaClient';
-import { requireAuth, type AuthedRequest } from '../../../lib/auth';
+import { requireAuth, type AuthedRequest } from '../../../lib/serverAuth';
 
 function parseDateOnly(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
