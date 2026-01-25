@@ -60,6 +60,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
+    console.error('register error:', e);
+
     res.status(500).json({ error: 'Internal Server Error' });
   }
 }

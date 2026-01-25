@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 
@@ -62,7 +63,7 @@ export default function RegisterPage() {
         </form>
         {error && <p style={{ color: 'red' }}>{error}</p>}
         <p>
-          Already have an account? <a href="/login">Login</a>
+          Already have an account? <Link href="/login">Login</Link>
         </p>
       </main>
     </>

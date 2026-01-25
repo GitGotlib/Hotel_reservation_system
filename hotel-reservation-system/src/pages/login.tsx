@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 
@@ -54,7 +55,7 @@ export default function LoginPage() {
         </form>
         {error && <p style={{ color: 'red' }}>{error}</p>}
         <p>
-          No account? <a href="/register">Register</a>
+          No account? <Link href="/register">Register</Link>
         </p>
       </main>
     </>

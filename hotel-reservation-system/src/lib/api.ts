@@ -83,3 +83,22 @@ export async function createReservation(params: {
     body: JSON.stringify(params),
   });
 }
+
+export type MeUser = { id: string; email: string; name: string | null };
+
+export async function getMe() {
+  const token = getToken();
+  if (!token) throw new Error('Unauthorized');
+
+  return request<{ user: MeUser }>('/api/auth/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export type HotelListItem = { id: string; name: string; address: string };
+
+export async function getHotels() {
+  return request<{ hotels: HotelListItem[] }>('/api/hotels');
+}
